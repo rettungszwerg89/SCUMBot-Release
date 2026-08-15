@@ -93,8 +93,8 @@
         <input type="text" name="WEBAPP_PUBLIC_URL" value="{{ current.get('WEBAPP_PUBLIC_URL', '') }}">
       </div>
       <div class="form-group">
-        <label>Spenden-Link (optional, z.B. Buy Me a Coffee/PayPal.me) - erscheint als kleiner Link auf der Webseite</label>
-        <input type="text" name="SUPPORT_URL" value="{{ current.get('SUPPORT_URL', '') }}" placeholder="https://buymeacoffee.com/deinname">
+        <label>Spenden-Link (erscheint als kleiner Link auf der Webseite) - kannst du auf deinen eigenen ändern</label>
+        <input type="text" name="SUPPORT_URL" value="{{ current.get('SUPPORT_URL', default_support_url) }}">
       </div>
       <div class="form-group">
         <label>top-games.net Token (optional, Voting-Belohnung)</label>

@@ -2,6 +2,9 @@
 
 *(Deutsche Anleitung: [README_ANLEITUNG.md](README_ANLEITUNG.md))*
 
+Free and open for everyone. If this saved you time, you can buy the creator
+a coffee: [paypal.me/rettungszwerg](https://www.paypal.com/paypalme/rettungszwerg) - completely optional.
+
 Discord bot + website for your own SCUM server: server status, shop, economy,
 taxi, leaderboard, killfeed, quests, dead drops, world events, live map and
 more. Everything runs on **your own** server/PC - nothing is sent to any

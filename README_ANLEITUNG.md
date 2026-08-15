@@ -2,6 +2,9 @@
 
 *(English guide: [README.md](README.md))*
 
+Kostenlos und frei für alle. Wenn dir das Zeit gespart hat, kannst du dem
+Ersteller gerne einen Kaffee spendieren: [paypal.me/rettungszwerg](https://www.paypal.com/paypalme/rettungszwerg) - völlig freiwillig.
+
 Discord-Bot + Webseite für einen eigenen SCUM-Server: Serverstatus, Shop, Wirtschaft,
 Taxi, Leaderboard, Killfeed, Quests, Tote Briefkästen, Weltereignisse, Live-Karte
 und mehr. Alles läuft auf **deinem eigenen** Server/PC - nirgendwo werden Daten an

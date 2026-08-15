@@ -709,7 +709,8 @@ def setup():
             settings_out["WEBAPP_PUBLIC_URL"] = request.form.get("WEBAPP_PUBLIC_URL", "").strip() or "http://localhost:5000"
             settings_out["ADMIN_PLAYER_NAME"] = request.form.get("ADMIN_PLAYER_NAME", "").strip()
             settings_out["SERVER_NAME"] = request.form.get("SERVER_NAME", "").strip() or "Mein SCUM-Server"
-            settings_out["SUPPORT_URL"] = request.form.get("SUPPORT_URL", "").strip()
+            submitted_support_url = request.form.get("SUPPORT_URL", "").strip()
+            settings_out["SUPPORT_URL"] = submitted_support_url if submitted_support_url else settings_out.get("SUPPORT_URL", config.DEFAULT_SUPPORT_URL)
 
             _write_secrets_ini(secrets_out)
             _write_server_settings(settings_out)
@@ -727,6 +728,7 @@ def setup():
         secrets_present=secrets_present,
         current=config._settings,
         already_configured=_is_configured(),
+        default_support_url=config.DEFAULT_SUPPORT_URL,
     )
 
 

@@ -444,7 +444,8 @@ MECH_SCHEDULE_STATE_FILE = _data("mech_schedule_last_run.txt")
 
 # --- Webseite (Flask) ---
 SERVER_NAME = _setting("SERVER_NAME", "Mein SCUM-Server")   # Anzeigename auf der Webseite
-SUPPORT_URL = _setting("SUPPORT_URL", "")   # optionaler Spenden-Link (z.B. Buy Me a Coffee/PayPal), leer = kein Link
+DEFAULT_SUPPORT_URL = "https://www.paypal.com/paypalme/rettungszwerg"
+SUPPORT_URL = _setting("SUPPORT_URL", DEFAULT_SUPPORT_URL)   # Spenden-Link, im Setup-Assistenten aenderbar/entfernbar
 WEBAPP_PORT = 5000
 WEBAPP_SECRET_KEY = _secret("WEBAPP_SECRET_KEY", "TODO_ZUFAELLIGER_LANGER_STRING")
 WEBAPP_PUBLIC_URL = _setting("WEBAPP_PUBLIC_URL", "http://localhost:5000")
