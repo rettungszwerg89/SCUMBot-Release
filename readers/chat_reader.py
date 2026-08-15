@@ -13,7 +13,7 @@ _state = {
     "position": 0,
 }
 
-# Beispiel-Zeile: 2026.08.06-15.21.56: '76561198109085019:Rettungszwerg(3)' 'Local: Hallo'
+# Beispiel-Zeile: 2026.08.06-15.21.56: '76561190000000000:Spielername(3)' 'Local: Hallo'
 _CHAT_LINE_RE = re.compile(
     r"^(?P<timestamp>[\d.]+-[\d.]+):\s*"
     r"'(?P<steamid>\d+):(?P<player>.+?)\((?P<slot>\d+)\)'\s*"
