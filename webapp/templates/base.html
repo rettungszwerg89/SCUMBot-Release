@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ server_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }}</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('home') }}">Übersicht</a>
+      <a href="{{ url_for('leaderboard') }}">Bestenliste</a>
+      <a href="{{ url_for('squads') }}">Squads</a>
+      <a href="{{ url_for('me') }}">Meine Statistiken</a>
+      <a href="{{ url_for('bunker') }}">Bunker</a>
+      <a href="{{ url_for('wirtschaft') }}">Wirtschaft</a>
+      <a href="{{ url_for('killfeed') }}">Kill-Feed</a>
+      <a href="{{ url_for('chat_history') }}">Chat</a>
+      <a href="{{ url_for('events') }}">Events</a>
+      <a href="{{ url_for('shop') }}">Gegenstände</a>
+      <div class="nav-links-right-mobile">
+        {% if user %}
+          <a href="{{ url_for('me') }}">{{ user.name }}</a>
+          <a href="{{ url_for('logout') }}" style="color:var(--muted);font-size:12px;">Logout</a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="cta">Mit Discord einloggen</a>
+        {% endif %}
+        {% if support_url %}<a href="{{ support_url }}" target="_blank" rel="noopener" style="color:var(--muted);">☕ Unterstützen</a>{% endif %}
+        <a href="{{ url_for('admin_login') }}" class="cta">Admin</a>
+      </div>
+    </div>
+    <div class="right">
+      {% if server_status %}
+      <div class="status-pill">
+        <span class="dot"></span>
+        <span class="count">{{ server_status.players }} / {{ server_status.max_players }}</span>
+        <span class="label">Überlebende</span>
+      </div>
+      <div class="status-badge">Betriebsbereit</div>
+      {% endif %}
+      {% if user %}
+        <a href="{{ url_for('me') }}">{{ user.name }}</a>
+        <a href="{{ url_for('logout') }}" style="color:var(--muted);font-size:12px;">Logout</a>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="cta">Mit Discord einloggen</a>
+      {% endif %}
+      {% if support_url %}<a href="{{ support_url }}" target="_blank" rel="noopener" style="color:var(--muted);">☕ Unterstützen</a>{% endif %}
+      <a href="{{ url_for('admin_login') }}" class="cta">Admin</a>
+    </div>
+  </div>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

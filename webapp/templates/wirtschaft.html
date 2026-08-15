@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero"><h1>Wirtschaft</h1></div>
+
+{% if summary %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title">🏪 Händler-Wirtschaft (SCUM)</div>
+  <div class="kv-row"><span class="k">Händlerguthaben gesamt</span><span class="v">{{ "{:,}".format(summary.trader_funds).replace(',', '.') }} $</span></div>
+  <div class="kv-row"><span class="k">Anzahl Händler</span><span class="v">{{ summary.trader_count }}</span></div>
+</div>
+{% endif %}
+
+{% if outposts %}
+<div class="card-title">🏕️ Außenposten</div>
+<div class="grid">
+  {% for o in outposts %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    {% if o.image_file %}
+    <img src="{{ url_for('outpost_image', filename=o.image_file) }}" style="width:100%; height:150px; object-fit:cover; display:block;">
+    {% endif %}
+    <div style="padding:16px;">
+      <div style="font-size:18px; font-weight:900; margin-bottom:10px;">AUSSENPOSTEN {{ o.name }}</div>
+      <div class="kv-row"><span class="k">Bankguthaben</span><span class="v">{{ "{:,}".format(o.bank_funds).replace(',', '.') }} $</span></div>
+      <div class="kv-row"><span class="k">Kaufkapazität</span><span class="v">{{ "{:,}".format(o.buying_capability).replace(',', '.') }} $</span></div>
+      <div class="kv-row"><span class="k">Gold-Kaufbudget</span><span class="v">{{ "{:,}".format(o.gold_buy).replace(',', '.') }} $</span></div>
+      <div class="kv-row"><span class="k">Gold zu verkaufen</span><span class="v">{{ o.gold_sell }}</span></div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if deals %}
+<div class="card-title" style="margin-top:26px;">🎯 Aktuelle Sonderangebote je Sektor</div>
+<div class="grid">
+  {% for sector, items in deals.items() %}
+  <div class="card">
+    <div class="card-title">{{ sector }}</div>
+    <table>
+      {% for d in items %}
+      <tr>
+        <td>{{ d.item }}<br><span style="color:var(--muted); font-size:11px;">{{ d.trader }}</span></td>
+        <td class="value">{{ d.price }} $</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card-title" style="margin-top:26px;">💰 Discord-Coins</div>
+<div class="card stat-box" style="margin-bottom:20px;">
+  <div class="stat-value">{{ total_coins }}</div>
+  <div class="stat-label">Coins insgesamt im Umlauf (Discord-Wirtschaft)</div>
+</div>
+
+<div class="card">
+  <div class="card-title">Top-Guthaben</div>
+  {% if rows %}
+  <table>
+    <tr><th>#</th><th>Spieler</th><th style="text-align:right;">Coins</th></tr>
+    {% for r in rows %}
+    <tr>
+      <td class="rank {{ 'top1' if loop.index == 1 else '' }}">{{ loop.index }}</td>
+      <td>{{ r.name }}</td>
+      <td class="value">{{ r.balance }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">Noch keine Coins-Daten.</div>
+  {% endif %}
+</div>
+{% endblock %}

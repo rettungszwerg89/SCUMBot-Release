@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if hero_banner %}
+<div class="site-hero">
+  <img src="{{ url_for('static', filename=hero_banner) }}" alt="{{ server_name }}">
+</div>
+{% endif %}
+
+<div class="grid cols-2">
+  <div class="card">
+    <div class="card-title">🖥️ Server</div>
+    <div class="kv-row"><span class="k">Name</span><span class="v">{{ server_name }}</span></div>
+    <div class="kv-row"><span class="k">Status</span>
+      <span class="v" style="color:var(--green);">{{ 'Online' if server_status and server_status.online else 'Unbekannt' }}</span>
+    </div>
+    <div class="kv-row"><span class="k">Leistung</span><span class="v">{{ server_status.fps if server_status and server_status.fps is not none else '–' }} FPS</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔄 Nächster Neustart</div>
+    <div style="font-family:'Liberation Mono',monospace; font-size:26px; color:var(--green); font-weight:700;">
+      {{ next_restart.strftime('%H:%M') }} Uhr
+    </div>
+    <div style="color:var(--muted); font-size:13px; margin-top:6px;">{{ next_restart.strftime('%A, %d.%m.%Y') }}</div>
+  </div>
+</div>
+
+<div class="grid cols-4">
+  <div class="card stat-box">
+    <div class="stat-value">{{ total_players }}</div>
+    <div class="stat-label">Spieler gesamt</div>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-value">{{ active_squads }}</div>
+    <div class="stat-label">Aktive Squads</div>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-value">{{ weather.island_time if weather else '–' }}</div>
+    <div class="stat-label">Inselzeit</div>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-value">{{ (weather.air_temp ~ ' / ' ~ weather.water_temp) if weather else '–' }}</div>
+    <div class="stat-label">Luft / Wasser (°C)</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div class="card-header-row">
+    <div class="card-title" style="margin-bottom:0;">🚩 Top-Squads</div>
+  </div>
+  {% if top_squads %}
+  <table style="margin-top:10px;">
+    {% for s in top_squads %}
+    <tr>
+      <td class="rank {{ 'top1' if loop.index == 1 else '' }}">{{ loop.index }}</td>
+      <td>{{ s.name }}</td>
+      <td class="value">{{ s.score|round|int }} Punkte</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <a href="{{ url_for('squads') }}" style="display:block; text-align:center; margin-top:14px; font-size:13px;">Alle Squads ansehen →</a>
+  {% else %}
+  <div class="empty">Noch keine Squads.</div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div class="card-title">⭐ Top-Spieler</div>
+  {% if top_players %}
+  <table>
+    {% for p in top_players %}
+    <tr>
+      <td class="rank {{ 'top1' if p.rank == 1 else '' }}">{{ p.rank }}</td>
+      <td>{{ p.name }}</td>
+      <td class="value">{{ p.value }} Pkt.</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <a href="{{ url_for('leaderboard') }}" style="display:block; text-align:center; margin-top:14px; font-size:13px;">Vollständige Rangliste ansehen →</a>
+  {% else %}
+  <div class="empty">Noch keine Daten.</div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:14px;">
+  <div class="card-title">💬 Live-Chat</div>
+  <div id="chat-widget" class="chat-widget">
+    {% for e in recent_chat %}
+    <div class="chat-line"><span class="chat-time">{{ e.timestamp[11:16] }}</span><span class="chat-player">{{ e.player }}</span>: {{ e.message }}</div>
+    {% else %}
+    <div class="empty" style="padding:10px 0;">Noch keine Chat-Nachrichten.</div>
+    {% endfor %}
+  </div>
+  <a href="{{ url_for('chat_history') }}" style="display:block; text-align:center; margin-top:14px; font-size:13px;">Vollständigen Verlauf ansehen →</a>
+</div>
+
+<div class="card" style="margin-top:14px; padding-bottom:4px;">
+  <div class="card-title">☆ Kategorie-Führende</div>
+  {% for cat in categories %}
+  <details class="category" {{ 'open' if loop.first else '' }}>
+    <summary>{{ cat.name }}</summary>
+    <div class="mini-grid">
+      {% for board in cat.boards %}
+      <div class="mini-card">
+        <div class="mini-label">{{ board.label }}</div>
+        {% if board.entries %}
+        <div class="mini-value">
+          <span class="mini-name">{{ board.entries[0].name }}</span>
+          <span class="mini-num">{{ board.entries[0].value }}</span>
+        </div>
+        {% else %}
+        <div class="mini-value" style="color:var(--muted); font-size:12px;">–</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+
+<script>
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function refreshChat() {
+    fetch("{{ url_for('api_chat_recent') }}")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var widget = document.getElementById('chat-widget');
+        if (!data.length) {
+          widget.innerHTML = '<div class="empty" style="padding:10px 0;">Noch keine Chat-Nachrichten.</div>';
+          return;
+        }
+        widget.innerHTML = data.map(function(e) {
+          var time = (e.timestamp || '').slice(11, 16);
+          return '<div class="chat-line"><span class="chat-time">' + escapeHtml(time) + '</span><span class="chat-player">' +
+            escapeHtml(e.player || '?') + '</span>: ' + escapeHtml(e.message || '') + '</div>';
+        }).join('');
+        widget.scrollTop = widget.scrollHeight;
+      })
+      .catch(function() {});
+  }
+  setInterval(refreshChat, 10000);
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero">
+  <h1>Bestenlisten</h1>
+</div>
+
+<div class="toggle-group" style="margin-bottom:20px;">
+  <a href="{{ url_for('leaderboard', period='alltime') }}" class="toggle-btn {{ 'active' if period=='alltime' else '' }}">Gesamt</a>
+  <a href="{{ url_for('leaderboard', period='weekly') }}" class="toggle-btn {{ 'active' if period=='weekly' else '' }}">Wöchentlich</a>
+</div>
+
+<div class="card">
+  <div class="card-title">⭐ Top-Spieler · Ruhm</div>
+  {% if top_players %}
+  <table>
+    {% for p in top_players %}
+    <tr>
+      <td class="rank {{ 'top1' if p.rank == 1 else '' }}">{{ p.rank }}</td>
+      <td>{{ p.name }}</td>
+      <td class="value">{{ p.value }} Pkt.</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">Noch keine Daten</div>
+  {% endif %}
+</div>
+
+<div class="card" style="margin-top:20px; padding-bottom:4px;">
+  <div class="card-title">☆ Kategorie-Führende</div>
+  {% for cat in categories %}
+  <details class="category" {{ 'open' if loop.first else '' }}>
+    <summary>{{ cat.name }}</summary>
+    <div class="mini-grid">
+      {% for board in cat.boards %}
+      <div class="mini-card">
+        <div class="mini-label">{{ board.label }}</div>
+        {% if board.entries %}
+        <div class="mini-value">
+          <span class="mini-name">{{ board.entries[0].name }}</span>
+          <span class="mini-num">{{ board.entries[0].value }}</span>
+        </div>
+        {% else %}
+        <div class="mini-value" style="color:var(--muted); font-size:12px;">–</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero"><h1>Verlassene Bunker</h1>
+{% if data.updated_at %}
+<p style="color:var(--muted);">Zuletzt aktualisiert: {{ data.updated_at[:19].replace('T', ' ') }}</p>
+{% endif %}
+</div>
+
+{% if data.bunkers %}
+<div class="grid">
+  {% for b in data.bunkers %}
+  <div class="card" style="padding:0; overflow:hidden;">
+    {% if b.image_file %}
+    <img src="{{ url_for('bunker_image', filename=b.image_file) }}" style="width:100%; height:160px; object-fit:cover; display:block;">
+    {% endif %}
+    <div style="padding:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-size:22px; font-weight:900;">{{ b.name }}</span>
+        {% if b.status == 'Active' %}
+          <span class="badge open">Aktiv</span>
+        {% else %}
+          <span class="badge locked">Verschlossen</span>
+        {% endif %}
+      </div>
+      <p style="color:var(--muted); font-size:13px; margin:0 0 12px;">
+        {{ 'schließt' if b.status == 'Active' else 'öffnet' }} in
+        <span class="countdown" data-target="{{ b.changes_at }}" style="color:var(--bone); font-weight:700;"></span>
+      </p>
+      <a href="{{ b.map_url }}" target="_blank" class="btn secondary" style="width:100%; text-align:center; display:block;">Auf Karte ansehen</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card"><div class="empty">Noch keine Bunker-Daten verfügbar.</div></div>
+{% endif %}
+
+<script>
+  function updateCountdowns() {
+    var now = Math.floor(Date.now() / 1000);
+    document.querySelectorAll('.countdown').forEach(function(el) {
+      var target = parseInt(el.dataset.target, 10);
+      var diff = target - now;
+      if (diff < 0) diff = 0;
+      var h = Math.floor(diff / 3600);
+      var m = Math.floor((diff % 3600) / 60);
+      el.textContent = h + 'h ' + m + 'm';
+    });
+  }
+  updateCountdowns();
+  setInterval(updateCountdowns, 30000);
+</script>
+{% endblock %}

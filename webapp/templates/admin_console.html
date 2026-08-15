@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin-Konsole</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_players') }}">Spieler</a>
+      <a href="{{ url_for('admin_chat') }}">Chat</a>
+      <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>
+      <a href="{{ url_for('admin_activity_log') }}">Aktivitätsprotokoll</a>
+      <a href="{{ url_for('admin_live_map') }}">Live-Karte</a>
+      <a href="{{ url_for('admin_console') }}">Konsole</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:640px;">
+    <h1 style="text-transform:uppercase;">🖥️ Admin-Konsole</h1>
+    <p style="color:var(--muted);">Befehl ohne führendes <code>#</code> eingeben.</p>
+
+    {% if result %}<div class="card" style="border-color:var(--green); margin-bottom:16px;">{{ result }}</div>{% endif %}
+
+    <form method="POST" class="card">
+      <div class="form-group">
+        <label>Als wen ausführen</label>
+        <select name="run_as">
+          <option value="{{ admin_name }}">Admin-Charakter ({{ admin_name }})</option>
+          {% for name in online_players %}
+            {% if name != admin_name %}
+            <option value="{{ name }}">{{ name }} (online, kurzzeitige Admin-Rechte)</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Befehl</label>
+        <input type="text" name="command" placeholder="z.B. SpawnItem 1H_Hunter 1 Location (76561198109085019)" autofocus>
+      </div>
+      <button type="submit" class="btn">Senden</button>
+    </form>
+
+    <p style="color:var(--muted); font-size:13px; margin-top:20px;">
+      Bei "Admin-Charakter" muss <b>{{ admin_name }}</b> ingame online sein. Bei einem anderen Spieler
+      bekommt dieser für ~10 Sekunden kurzzeitig echte Admin-Rechte (wie beim Shop-Kauf), danach automatisch wieder normal.<br>
+      Beispiele: <code>Announce Hallo Welt</code>, <code>Teleport 12345 -67890 (Spielername)</code>.
+    </p>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Quests verwalten</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('admin_dead_drops') }}">Briefkästen</a>
+      <a href="{{ url_for('admin_world_events') }}">Weltereignisse</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container">
+    <h1 style="text-transform:uppercase;">🗺️ Quests verwalten</h1>
+    <a href="{{ url_for('admin_quests_new') }}" class="btn">+ Neue Quest</a>
+
+    <table style="margin-top:20px;">
+      <tr><th>Name</th><th>Anforderungen</th><th>Koordinate</th><th>Belohnung</th><th></th></tr>
+      {% for q in quests %}
+      <tr>
+        <td>{{ q.name }}</td>
+        <td style="color:var(--muted); font-size:13px;">
+          {% for r in q.requirements %}
+            {{ r.amount }}x {{ items_by_key[r.item_key].name if r.item_key in items_by_key else '⚠️ ' ~ r.item_key }}{{ ', ' if not loop.last else '' }}
+          {% endfor %}
+        </td>
+        <td style="font-family:'Liberation Mono',monospace; font-size:12px;">{{ q.x }}, {{ q.y }}</td>
+        <td>
+          {% if q.payout_type == 'package' %}
+            📦 {{ items_by_key[q.payout_package_key].name if q.payout_package_key in items_by_key else '⚠️ ' ~ q.payout_package_key }}
+          {% elif q.payout_type == 'cash' %}
+            💵 {{ q.payout_amount }} Ingame-Geld
+          {% else %}
+            💰 {{ q.payout_amount }} Coins
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('admin_quests_edit', key=q.key) }}" class="btn secondary">Bearbeiten</a>
+          <form method="POST" action="{{ url_for('admin_quests_delete', key=q.key) }}" class="inline"
+                onsubmit="return confirm('Quest \'{{ q.name }}\' wirklich löschen?');">
+            <button type="submit" class="btn danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="empty">Noch keine Quests angelegt.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ 'Ort bearbeiten' if location else 'Neuer Ort' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_world_events') }}">Zurück zu Weltereignissen</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:520px;">
+    <h1 style="text-transform:uppercase;">{{ 'Ort bearbeiten' if location else 'Neuer Ort' }}</h1>
+    <form method="POST" class="card">
+      {% if not location %}
+      <div class="form-group">
+        <label>Schlüssel (eindeutig, keine Leerzeichen)</label>
+        <input type="text" name="key" required pattern="[a-z0-9_\-]+" placeholder="z.B. zagorje">
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" required value="{{ location.name if location else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Bild-Link (optional, z.B. Kartenausschnitt)</label>
+        <input type="url" name="image_url" placeholder="https://..." value="{{ location.image_url if location else '' }}">
+      </div>
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>X-Koordinate</label>
+          <input type="number" step="any" name="x" required value="{{ location.x if location else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Y-Koordinate</label>
+          <input type="number" step="any" name="y" required value="{{ location.y if location else '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Radius (Meter, Eventgebiet)</label>
+        <input type="number" step="any" name="radius" min="1" value="{{ location.radius if location else 400 }}">
+      </div>
+      <button type="submit" class="btn" style="margin-top:12px;">Speichern</button>
+    </form>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

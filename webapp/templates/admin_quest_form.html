@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ 'Quest bearbeiten' if quest else 'Neue Quest' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_quests') }}">Zurück zu Quests</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:600px;">
+    <h1 style="text-transform:uppercase;">{{ 'Quest bearbeiten' if quest else 'Neue Quest' }}</h1>
+    <form method="POST" class="card">
+      {% if not quest %}
+      <div class="form-group">
+        <label>Schlüssel (eindeutig, keine Leerzeichen)</label>
+        <input type="text" name="key" required pattern="[a-z0-9_\-]+" placeholder="z.B. vorraete_sammeln">
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name" required value="{{ quest.name if quest else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Beschreibung</label>
+        <input type="text" name="description" value="{{ quest.description if quest else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Bild-Link (optional)</label>
+        <input type="url" name="image_url" placeholder="https://..." value="{{ quest.image_url if quest else '' }}">
+      </div>
+
+      <div class="grid cols-2">
+        <div class="form-group">
+          <label>X-Koordinate</label>
+          <input type="number" step="any" name="x" required value="{{ quest.x if quest else '' }}">
+        </div>
+        <div class="form-group">
+          <label>Y-Koordinate</label>
+          <input type="number" step="any" name="y" required value="{{ quest.y if quest else '' }}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Radius (Meter — Höhe spielt keine Rolle)</label>
+        <input type="number" step="any" name="radius" min="1" value="{{ quest.radius if quest else 15 }}">
+      </div>
+
+      <div class="form-group">
+        <label>Benötigte Artikel</label>
+        <div id="requirements-list"></div>
+        <button type="button" class="btn secondary" onclick="addRequirementRow()" style="margin-top:6px;">+ Artikel hinzufügen</button>
+      </div>
+
+      <div class="form-group">
+        <label>Belohnungsart</label>
+        <select name="payout_type" id="payout-type" onchange="togglePayoutFields()">
+          <option value="coins" {{ 'selected' if quest and quest.payout_type == 'coins' else '' }}>Discord-Coins</option>
+          <option value="cash" {{ 'selected' if quest and quest.payout_type == 'cash' else '' }}>Ingame-Geld</option>
+          <option value="package" {{ 'selected' if quest and quest.payout_type == 'package' else '' }}>Artikel (Paket)</option>
+        </select>
+      </div>
+      <div class="form-group" id="payout-amount-group">
+        <label>Betrag</label>
+        <input type="number" name="payout_amount" min="0" value="{{ quest.payout_amount if quest and quest.payout_amount else 0 }}">
+      </div>
+      <div class="form-group" id="payout-package-group" style="display:none;">
+        <label>Artikel</label>
+        <select name="payout_package_key">
+          {% for item in items %}
+          <option value="{{ item.key }}" {{ 'selected' if quest and quest.payout_package_key == item.key else '' }}>{{ item.name }} ({{ item.category }})</option>
+          {% endfor %}
+        </select>
+        <label style="margin-top:8px;">Menge (unabhängig vom Shop-Standardwert)</label>
+        <input type="number" name="payout_package_amount" min="1"
+               value="{{ quest.payout_package_amount if quest and quest.payout_package_amount else 1 }}">
+      </div>
+
+      <button type="submit" class="btn" style="margin-top:12px;">Speichern</button>
+    </form>
+  </div>
+  <script>
+    var ITEMS = [
+      {% for item in items %}
+      { key: {{ item.key|tojson }}, label: {{ (item.name ~ ' (' ~ item.category ~ ')')|tojson }} }{{ ',' if not loop.last else '' }}
+      {% endfor %}
+    ];
+    var EXISTING_REQUIREMENTS = {{ (quest.requirements if quest else [])|tojson }};
+
+    function addRequirementRow(itemKey, amount) {
+      var container = document.getElementById('requirements-list');
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+
+      var select = document.createElement('select');
+      select.name = 'req_item_key';
+      select.style.flex = '1';
+      ITEMS.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = item.label;
+        if (item.key === itemKey) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      var amountInput = document.createElement('input');
+      amountInput.type = 'number';
+      amountInput.name = 'req_amount';
+      amountInput.min = '1';
+      amountInput.value = amount || 1;
+      amountInput.style.width = '90px';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn danger';
+      removeBtn.textContent = 'X';
+      removeBtn.addEventListener('click', function() { row.remove(); });
+
+      row.appendChild(select);
+      row.appendChild(amountInput);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    }
+
+    if (EXISTING_REQUIREMENTS.length) {
+      EXISTING_REQUIREMENTS.forEach(function(r) { addRequirementRow(r.item_key, r.amount); });
+    } else {
+      addRequirementRow();
+    }
+
+    function togglePayoutFields() {
+      var t = document.getElementById('payout-type').value;
+      document.getElementById('payout-amount-group').style.display = (t === 'package') ? 'none' : 'block';
+      document.getElementById('payout-package-group').style.display = (t === 'package') ? 'block' : 'none';
+    }
+    togglePayoutFields();
+
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

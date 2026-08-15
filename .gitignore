@@ -1,0 +1,14 @@
+# Echte Zugangsdaten - NIEMALS hochladen
+secrets.ini
+
+# Laufzeitdaten (Wirtschaft, Shop-Katalog, Chat-/Kill-Logs, ...) - persoenlich pro Installation
+data/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor/OS
+.vscode/
+Thumbs.db
+.claude/

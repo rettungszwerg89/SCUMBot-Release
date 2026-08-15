@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero"><h1>Mein Konto</h1></div>
+
+{% if not link %}
+<div class="card">
+  <p>Dein Discord-Account ist noch nicht mit einem SCUM-Charakter verknüpft.</p>
+  <p style="color:var(--muted);">Nutze den Button "Account verknüpfen" im Discord-Server, um loszulegen.</p>
+</div>
+{% else %}
+<div class="grid cols-2">
+  <div class="card">
+    <div class="card-title">Charakter</div>
+    <p style="font-size:20px;font-weight:700;">{{ link.player_name }}</p>
+    <p style="color:var(--muted);">Verknüpft seit {{ link.linked_at[:10] }}</p>
+  </div>
+  <div class="card stat-box">
+    <div class="stat-value">{{ balance }}</div>
+    <div class="stat-label">Coins Guthaben</div>
+  </div>
+</div>
+
+{% if stats %}
+<div class="card" style="margin-top:14px;">
+  <div class="card-title">Statistiken</div>
+  <table>
+    <tr><td>Kills</td><td class="value">{{ stats.kills }}</td></tr>
+    <tr><td>Tode</td><td class="value">{{ stats.deaths }}</td></tr>
+    <tr><td>Kopfschüsse</td><td class="value">{{ stats.headshots }}</td></tr>
+    <tr><td>Puppet-Kills</td><td class="value">{{ stats.puppets_killed }}</td></tr>
+    <tr><td>Schlösser geknackt</td><td class="value">{{ stats.locks_picked }}</td></tr>
+    <tr><td>Fische</td><td class="value">{{ stats.fish_caught }}</td></tr>
+    <tr><td>Ruhm</td><td class="value">{{ stats.fame_points|round|int }}</td></tr>
+    <tr><td>Überlebenszeit</td><td class="value">{{ (stats.minutes_survived / 60)|round(1) }}h</td></tr>
+    <tr><td>Distanz</td><td class="value">{{ (stats.distance_travelled_by_foot / 1000)|round(1) }} km</td></tr>
+  </table>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

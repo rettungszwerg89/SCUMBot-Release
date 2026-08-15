@@ -1,0 +1,93 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tagespaket verwalten</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('admin_redeem_codes') }}">Redeem-Codes</a>
+      <a href="{{ url_for('admin_dead_drops') }}">Briefkästen</a>
+      <a href="{{ url_for('admin_quests') }}">Quests</a>
+      <a href="{{ url_for('admin_world_events') }}">Weltereignisse</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:600px;">
+    <h1 style="text-transform:uppercase;">🎁 Tagespaket verwalten</h1>
+    <p style="color:var(--muted);">
+      Artikel + eigene Menge (unabhängig vom Shop-Standardwert). Jeder verknüpfte Spieler
+      kann sich das Paket alle {{ cooldown_hours }}h einmal im Account-Panel abholen (kostenlos, kein Coins-Abzug).
+    </p>
+    <form method="POST" class="card">
+      <div id="entries-list"></div>
+      <button type="button" class="btn secondary" onclick="addEntryRow()" style="margin-top:6px;">+ Artikel hinzufügen</button>
+      <button type="submit" class="btn" style="margin-top:16px; display:block;">Speichern</button>
+    </form>
+  </div>
+  <script>
+    var ITEMS = [
+      {% for item in items %}
+      { key: {{ item.key|tojson }}, label: {{ (item.name ~ ' (' ~ item.category ~ ')')|tojson }} }{{ ',' if not loop.last else '' }}
+      {% endfor %}
+    ];
+    var EXISTING_ENTRIES = {{ entries|tojson }};
+
+    function addEntryRow(itemKey, amount) {
+      var container = document.getElementById('entries-list');
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+
+      var select = document.createElement('select');
+      select.name = 'item_key';
+      select.style.flex = '1';
+      ITEMS.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = item.label;
+        if (item.key === itemKey) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      var amountInput = document.createElement('input');
+      amountInput.type = 'number';
+      amountInput.name = 'item_amount';
+      amountInput.min = '1';
+      amountInput.value = amount || 1;
+      amountInput.style.width = '90px';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn danger';
+      removeBtn.textContent = 'X';
+      removeBtn.addEventListener('click', function() { row.remove(); });
+
+      row.appendChild(select);
+      row.appendChild(amountInput);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    }
+
+    if (EXISTING_ENTRIES.length) {
+      EXISTING_ENTRIES.forEach(function(e) { addEntryRow(e.item_key, e.amount); });
+    } else {
+      addEntryRow();
+    }
+
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

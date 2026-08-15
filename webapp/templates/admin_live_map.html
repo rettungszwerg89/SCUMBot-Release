@@ -1,0 +1,606 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live-Karte</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+  <style>
+    .map-layout { display: flex; gap: 16px; align-items: flex-start; }
+    .map-sidebar {
+      width: 220px; flex-shrink: 0; background: var(--panel); border: 1px solid var(--panel-border);
+      border-radius: 6px; padding: 16px;
+    }
+    .filter-group { margin-bottom: 18px; }
+    .filter-group .title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted); margin-bottom: 8px; font-weight: 700; }
+    .filter-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
+    .filter-row input { accent-color: var(--green); }
+    .filter-count { margin-left: auto; color: var(--muted); font-family: 'Liberation Mono', monospace; font-size: 12px; }
+
+    #map-scroll {
+      flex: 1; overflow: auto; height: 80vh; min-width: 0;
+      border: 1px solid var(--panel-border); border-radius: 6px;
+      cursor: grab; background: #0a0a0a;
+    }
+    #map-scroll.dragging { cursor: grabbing; }
+    #map-wrap { position: relative; display: inline-block; user-select: none; }
+    #map-img { display: block; max-width: none; pointer-events: none; }
+
+    .zoom-controls {
+      position: sticky; top: 8px; float: right; margin: 8px 8px 0 0; z-index: 5;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .zoom-controls button {
+      width: 30px; height: 30px; border-radius: 4px; border: 1px solid var(--panel-border);
+      background: var(--panel); color: var(--text, #eee); font-size: 16px; cursor: pointer;
+    }
+    .zoom-controls button:hover { background: var(--panel2); }
+    .vehicle-note { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+    .marker { position: absolute; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid #0a0a0a; }
+    .marker.online { width: 10px; height: 10px; background: #4CAF50; box-shadow: 0 0 8px #4CAF50; }
+    .marker.offline { width: 10px; height: 10px; background: #888; box-shadow: 0 0 4px #888; }
+    .marker.vehicle { width: 8px; height: 8px; background: #3b82f6; box-shadow: 0 0 6px #3b82f6; }
+
+    .marker-label {
+      position: absolute; transform: translate(-50%, 6px);
+      font-size: 10px; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+    }
+    .marker-label.offline { color: #aaa; background: rgba(11,18,12,0.6); }
+    .marker-label.online { color: #b7f0bd; background: rgba(11,18,12,0.6); }
+    .marker-label.vehicle { color: #cfe0ff; background: rgba(11,18,12,0.6); }
+    .marker.actionable { cursor: pointer; }
+
+    .action-panel {
+      position: fixed; z-index: 50; width: 300px; max-width: calc(100vw - 24px);
+      max-height: 80vh; overflow-y: auto;
+      background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+    }
+    .action-panel-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 14px; border-bottom: 1px solid var(--panel-border);
+      font-family: 'Liberation Mono', monospace; font-size: 13px; color: var(--accent);
+      position: sticky; top: 0; background: var(--panel);
+    }
+    .action-panel-close { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
+    .action-panel-body { padding: 12px 14px; }
+    .action-section { margin-bottom: 10px; border-bottom: 1px solid var(--panel-border); padding-bottom: 10px; }
+    .action-section:last-of-type { border-bottom: none; }
+    .action-section summary { cursor: pointer; color: var(--accent); font-size: 13px; padding: 6px 0; font-weight: 700; }
+    .action-section .form-group { margin-bottom: 8px; }
+    .action-section .form-group label { font-size: 10px; margin-bottom: 3px; }
+    .action-section select, .action-section input { padding: 7px; font-size: 13px; }
+    .action-btn { width: 100%; margin-top: 4px; padding: 8px; font-size: 12px; }
+    .action-result { margin-top: 10px; font-size: 12px; padding: 8px 10px; border-radius: 4px; }
+    .action-result.ok { background: rgba(111,191,79,0.15); color: var(--green); }
+    .action-result.err { background: rgba(192,57,43,0.15); color: var(--red); }
+    .action-result.pending { background: rgba(239,147,39,0.12); color: var(--accent); }
+    .action-result:empty { display: none; padding: 0; margin-top: 0; }
+
+    @media (max-width: 860px) {
+      .map-layout { flex-direction: column; }
+      .map-sidebar { width: 100%; }
+      #map-scroll { height: 60vh; width: 100%; }
+      .action-panel { width: calc(100vw - 24px); left: 12px !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_players') }}">Spieler</a>
+      <a href="{{ url_for('admin_chat') }}">Chat</a>
+      <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>
+      <a href="{{ url_for('admin_activity_log') }}">Aktivitätsprotokoll</a>
+      <a href="{{ url_for('admin_live_map') }}">Live-Karte</a>
+      <a href="{{ url_for('admin_console') }}">Konsole</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:none; overflow-x:auto;">
+    <h1 style="text-transform:uppercase;">🗺️ Live-Karte</h1>
+    <p style="color:var(--muted);" id="status-text">Lade Positionen...</p>
+
+    <div class="map-layout">
+      <div class="map-sidebar">
+        <div class="filter-group">
+          <div class="title">Spieler <span id="count-players" class="filter-count"></span></div>
+          <div class="filter-row">
+            <input type="checkbox" id="filter-online" checked>
+            <label for="filter-online">🟢 Online</label>
+            <span id="count-online" class="filter-count"></span>
+          </div>
+          <div class="filter-row">
+            <input type="checkbox" id="filter-offline" checked>
+            <label for="filter-offline">⚪ Offline (letzte Position)</label>
+            <span id="count-offline" class="filter-count"></span>
+          </div>
+        </div>
+        <div class="filter-group">
+          <div class="title">Fahrzeuge <span id="count-vehicles" class="filter-count"></span></div>
+          <div id="vehicle-type-list"></div>
+          <div class="vehicle-note" id="vehicle-note"></div>
+        </div>
+        <div class="filter-group">
+          <div class="title">Namen</div>
+          <div class="filter-row">
+            <input type="checkbox" id="filter-names" checked>
+            <label for="filter-names">Beschriftung anzeigen</label>
+          </div>
+        </div>
+        <div class="filter-group">
+          <div class="title">Aktionen</div>
+          <p style="color:var(--muted); font-size:12px; line-height:1.5; margin:0;">
+            Auf die Karte klicken, um an dieser Position einen Spieler zu teleportieren,
+            Items/Fahrzeuge zu geben, Geld &amp; Ruhm zu vergeben oder einen Admin-Befehl auszuführen.
+          </p>
+        </div>
+      </div>
+
+      <div id="map-scroll">
+        <div class="zoom-controls">
+          <button type="button" id="zoom-in" title="Vergrößern">+</button>
+          <button type="button" id="zoom-out" title="Verkleinern">−</button>
+          <button type="button" id="zoom-reset" title="Zurücksetzen">⟲</button>
+        </div>
+        <div id="map-wrap">
+          <img id="map-img" src="{{ url_for('admin_live_map_image') }}">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="action-panel" class="action-panel" style="display:none;">
+    <div class="action-panel-header">
+      <span id="action-panel-coords">X: – / Y: –</span>
+      <button type="button" id="action-panel-close" class="action-panel-close">✕</button>
+    </div>
+    <div class="action-panel-body">
+      <div class="form-group">
+        <label>Spieler (online)</label>
+        <select id="action-player"></select>
+      </div>
+
+      <div class="action-section">
+        <button type="button" class="btn secondary action-btn" id="action-teleport">🚕 Hierher teleportieren</button>
+      </div>
+
+      <details class="action-section">
+        <summary>📦 Item / Fahrzeug geben</summary>
+        <div class="form-group">
+          <label>Aus Shop-Katalog (optional)</label>
+          <select id="action-item-select">
+            <option value="">– eigene ID unten eingeben –</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Typ</label>
+          <select id="action-item-type">
+            <option value="item">Item</option>
+            <option value="vehicle">Fahrzeug</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Item-/Fahrzeug-ID</label>
+          <input type="text" id="action-item-id" placeholder="z.B. 1H_Hunter">
+        </div>
+        <div class="form-group" id="action-item-amount-group">
+          <label>Menge</label>
+          <input type="number" id="action-item-amount" value="1" min="1">
+        </div>
+        <button type="button" class="btn action-btn" id="action-give-item">Geben</button>
+      </details>
+
+      <details class="action-section">
+        <summary>💰 Geld &amp; Ruhm vergeben</summary>
+        <div class="form-group">
+          <label>Geld (+/-)</label>
+          <input type="number" id="action-money" value="0">
+        </div>
+        <div class="form-group">
+          <label>Ruhm (+/-)</label>
+          <input type="number" id="action-fame" value="0">
+        </div>
+        <button type="button" class="btn action-btn" id="action-give-money">Vergeben</button>
+      </details>
+
+      <details class="action-section">
+        <summary>⚙️ Eigener Admin-Befehl</summary>
+        <div class="form-group">
+          <input type="text" id="action-command" placeholder="z.B. SetGodMode true">
+        </div>
+        <button type="button" class="btn action-btn" id="action-run-command">Ausführen</button>
+      </details>
+
+      <details class="action-section">
+        <summary>🪂 Absprungkiste spawnen (Toter Briefkasten)</summary>
+        <p style="color:var(--muted); font-size:12px; margin:0 0 8px;">
+          Sichtbare Markierung, kein Fallen/Physik — Z muss die tatsächliche Bodenhöhe sein
+          (steh an der Stelle im Spiel und lies deine eigene Z-Koordinate ab).
+        </p>
+        <div class="form-group">
+          <label>Z (Bodenhöhe)</label>
+          <input type="number" step="any" id="action-marker-z" placeholder="z.B. 10708">
+        </div>
+        <button type="button" class="btn action-btn" id="action-spawn-marker">Kiste hier platzieren</button>
+      </details>
+
+      <div id="action-result" class="action-result"></div>
+    </div>
+  </div>
+
+  <script>
+    let lastData = { positions: [], vehicles: [], vehicle_total: null };
+    let zoom = 1;
+    let baseWidth = null, baseHeight = null;
+    let hiddenVehicleTypes = new Set();
+    const SHOP_ITEMS = {{ shop_items_json|safe }};
+
+    function updateMapSize() {
+      var img = document.getElementById('map-img');
+      if (!baseWidth) { baseWidth = img.naturalWidth; baseHeight = img.naturalHeight; }
+      if (!baseWidth) return;  // Bild noch nicht geladen
+      img.style.width = (baseWidth * zoom) + 'px';
+      img.style.height = (baseHeight * zoom) + 'px';
+    }
+
+    function setZoom(newZoom, anchorClientX, anchorClientY) {
+      var scroll = document.getElementById('map-scroll');
+      newZoom = Math.min(4, Math.max(0.25, newZoom));
+      var rect = scroll.getBoundingClientRect();
+      var ax = anchorClientX != null ? anchorClientX : rect.left + rect.width / 2;
+      var ay = anchorClientY != null ? anchorClientY : rect.top + rect.height / 2;
+      var offsetX = ax - rect.left + scroll.scrollLeft;
+      var offsetY = ay - rect.top + scroll.scrollTop;
+      var ratio = newZoom / zoom;
+      zoom = newZoom;
+      updateMapSize();
+      scroll.scrollLeft = offsetX * ratio - (ax - rect.left);
+      scroll.scrollTop = offsetY * ratio - (ay - rect.top);
+      renderMarkers();
+    }
+
+    function renderMarkers() {
+      var wrap = document.getElementById('map-wrap');
+      wrap.querySelectorAll('.marker, .marker-label').forEach(el => el.remove());
+
+      var showOnline = document.getElementById('filter-online').checked;
+      var showOffline = document.getElementById('filter-offline').checked;
+      var showNames = document.getElementById('filter-names').checked;
+
+      if (showOnline || showOffline) {
+        lastData.positions.forEach(function(p) {
+          if (p.status === 'online' && !showOnline) return;
+          if (p.status === 'offline' && !showOffline) return;
+          var dot = document.createElement('div');
+          dot.className = 'marker ' + p.status;
+          dot.style.left = (p.px * zoom) + 'px';
+          dot.style.top = (p.py * zoom) + 'px';
+          dot.title = p.name + (p.status === 'online' ? ' (online)' : ' (offline, letzte bekannte Position)');
+          wrap.appendChild(dot);
+
+          if (showNames) {
+            var label = document.createElement('div');
+            label.className = 'marker-label ' + p.status;
+            label.style.left = (p.px * zoom) + 'px';
+            label.style.top = (p.py * zoom) + 'px';
+            label.textContent = p.name;
+            wrap.appendChild(label);
+          }
+        });
+      }
+
+      lastData.vehicles.forEach(function(v) {
+        if (hiddenVehicleTypes.has(v.name)) return;
+        var dot = document.createElement('div');
+        dot.className = 'marker vehicle';
+        dot.style.left = (v.px * zoom) + 'px';
+        dot.style.top = (v.py * zoom) + 'px';
+        dot.title = v.name;
+        wrap.appendChild(dot);
+
+        if (showNames) {
+          var label = document.createElement('div');
+          label.className = 'marker-label vehicle';
+          label.style.left = (v.px * zoom) + 'px';
+          label.style.top = (v.py * zoom) + 'px';
+          label.textContent = v.name;
+          wrap.appendChild(label);
+        }
+      });
+    }
+
+    function rebuildVehicleTypeFilter() {
+      var container = document.getElementById('vehicle-type-list');
+      var counts = {};
+      lastData.vehicles.forEach(function(v) { counts[v.name] = (counts[v.name] || 0) + 1; });
+      var types = Object.keys(counts).sort();
+
+      if (types.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted); font-size:12px;">Gerade keine Fahrzeuge sichtbar.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      types.forEach(function(type) {
+        var row = document.createElement('div');
+        row.className = 'filter-row';
+        var safeId = 'vf-' + type.replace(/[^a-zA-Z0-9]/g, '_');
+        row.innerHTML =
+          '<input type="checkbox" id="' + safeId + '"' + (hiddenVehicleTypes.has(type) ? '' : ' checked') + '>' +
+          '<label for="' + safeId + '">' + type + '</label>' +
+          '<span class="filter-count">' + counts[type] + '</span>';
+        container.appendChild(row);
+        row.querySelector('input').addEventListener('change', function(e) {
+          if (e.target.checked) { hiddenVehicleTypes.delete(type); } else { hiddenVehicleTypes.add(type); }
+          renderMarkers();
+        });
+      });
+    }
+
+    function refreshPositions() {
+      fetch("{{ url_for('admin_live_map_positions') }}")
+        .then(r => r.json())
+        .then(data => {
+          lastData = data;
+          var onlineCount = data.positions.filter(p => p.status === 'online').length;
+          var offlineCount = data.positions.filter(p => p.status === 'offline').length;
+          document.getElementById('count-players').textContent = (onlineCount + offlineCount);
+          document.getElementById('count-online').textContent = onlineCount;
+          document.getElementById('count-offline').textContent = offlineCount;
+          document.getElementById('count-vehicles').textContent = data.vehicles.length;
+
+          var note = document.getElementById('vehicle-note');
+          if (data.vehicle_total != null) {
+            note.textContent = data.vehicle_total + ' Fahrzeuge insgesamt laut Datenbank – nur die ' +
+              'gerade in Spielernähe geladenen haben eine Live-Position (Engine-Limit von SCUM, kein Fehler).';
+          }
+
+          document.getElementById('status-text').textContent =
+            onlineCount + ' online, ' + offlineCount + ' offline, ' + data.vehicles.length +
+            ' Fahrzeuge sichtbar' + (data.vehicle_total != null ? ' von ' + data.vehicle_total + ' insgesamt' : '') +
+            ' · aktualisiert ' + new Date().toLocaleTimeString('de-DE');
+          rebuildVehicleTypeFilter();
+          renderMarkers();
+          refreshActionPlayerOptions();
+        })
+        .catch(err => {
+          document.getElementById('status-text').textContent = 'Fehler beim Laden: ' + err;
+        });
+    }
+
+    ['filter-online', 'filter-offline', 'filter-names'].forEach(function(id) {
+      document.getElementById(id).addEventListener('change', renderMarkers);
+    });
+
+    // ---- Zoom (Buttons + Mausrad, um den Cursor herum verankert) ----
+    document.getElementById('zoom-in').addEventListener('click', () => setZoom(zoom * 1.3));
+    document.getElementById('zoom-out').addEventListener('click', () => setZoom(zoom / 1.3));
+    document.getElementById('zoom-reset').addEventListener('click', () => setZoom(1));
+
+    var mapScroll = document.getElementById('map-scroll');
+    mapScroll.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      var factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      setZoom(zoom * factor, e.clientX, e.clientY);
+    }, { passive: false });
+
+    // ---- Drag-to-pan per Maus ----
+    var dragging = false, dragMoved = false, dragStartX = 0, dragStartY = 0, dragScrollLeft = 0, dragScrollTop = 0;
+    mapScroll.addEventListener('mousedown', function(e) {
+      dragging = true; dragMoved = false;
+      mapScroll.classList.add('dragging');
+      dragStartX = e.clientX; dragStartY = e.clientY;
+      dragScrollLeft = mapScroll.scrollLeft; dragScrollTop = mapScroll.scrollTop;
+    });
+    document.addEventListener('mousemove', function(e) {
+      if (!dragging) return;
+      if (Math.abs(e.clientX - dragStartX) > 4 || Math.abs(e.clientY - dragStartY) > 4) dragMoved = true;
+      mapScroll.scrollLeft = dragScrollLeft - (e.clientX - dragStartX);
+      mapScroll.scrollTop = dragScrollTop - (e.clientY - dragStartY);
+    });
+    document.addEventListener('mouseup', function() {
+      dragging = false;
+      mapScroll.classList.remove('dragging');
+    });
+
+    // ---- Drag-to-pan per Touch (ein Finger) ----
+    mapScroll.addEventListener('touchstart', function(e) {
+      if (e.touches.length !== 1) return;
+      dragging = true; dragMoved = false;
+      dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+      dragScrollLeft = mapScroll.scrollLeft; dragScrollTop = mapScroll.scrollTop;
+    }, { passive: true });
+    mapScroll.addEventListener('touchmove', function(e) {
+      if (!dragging || e.touches.length !== 1) return;
+      if (Math.abs(e.touches[0].clientX - dragStartX) > 4 || Math.abs(e.touches[0].clientY - dragStartY) > 4) dragMoved = true;
+      mapScroll.scrollLeft = dragScrollLeft - (e.touches[0].clientX - dragStartX);
+      mapScroll.scrollTop = dragScrollTop - (e.touches[0].clientY - dragStartY);
+    }, { passive: true });
+    mapScroll.addEventListener('touchend', function() { dragging = false; });
+
+    document.getElementById('map-img').addEventListener('load', updateMapSize);
+
+    // ==================== Klick-Aktionspanel ====================
+    var actionPanel = document.getElementById('action-panel');
+    var actionPlayerSelect = document.getElementById('action-player');
+    var actionClickX = null, actionClickY = null;
+
+    // Shop-Katalog fuers Item-Dropdown vorbereiten
+    (function populateItemSelect() {
+      var select = document.getElementById('action-item-select');
+      SHOP_ITEMS.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = JSON.stringify({ id: item.id, type: item.type, name: item.name });
+        opt.textContent = item.name + ' (' + item.category + ')';
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', function() {
+        if (!select.value) return;
+        var chosen = JSON.parse(select.value);
+        document.getElementById('action-item-id').value = chosen.id;
+        document.getElementById('action-item-type').value = chosen.type;
+      });
+    })();
+
+    function refreshActionPlayerOptions() {
+      var previous = actionPlayerSelect.value;
+      actionPlayerSelect.innerHTML = '';
+      var onlinePositions = lastData.positions.filter(function(p) { return p.status === 'online'; });
+      if (onlinePositions.length === 0) {
+        var opt = document.createElement('option');
+        opt.textContent = 'Niemand online';
+        opt.value = '';
+        actionPlayerSelect.appendChild(opt);
+        return;
+      }
+      onlinePositions.forEach(function(p) {
+        var opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        actionPlayerSelect.appendChild(opt);
+      });
+      if (previous && onlinePositions.some(function(p) { return p.name === previous; })) {
+        actionPlayerSelect.value = previous;
+      }
+    }
+
+    function nearestOnlinePlayer(px, py) {
+      var best = null, bestDist = Infinity;
+      lastData.positions.forEach(function(p) {
+        if (p.status !== 'online') return;
+        var dist = Math.hypot(p.px - px, p.py - py);
+        if (dist < bestDist) { bestDist = dist; best = p.name; }
+      });
+      return best;
+    }
+
+    function showActionResult(message, kind) {
+      var box = document.getElementById('action-result');
+      box.textContent = message;
+      box.className = 'action-result' + (kind ? ' ' + kind : '');
+    }
+
+    function openActionPanel(px, py, screenX, screenY) {
+      actionPanel.style.display = 'block';
+      showActionResult('', '');
+      document.getElementById('action-panel-coords').textContent = 'X: … / Y: …';
+
+      refreshActionPlayerOptions();
+      var nearest = nearestOnlinePlayer(px, py);
+      if (nearest) actionPlayerSelect.value = nearest;
+
+      // Panel in den sichtbaren Bereich clampen
+      var panelWidth = 300, panelHeight = Math.min(window.innerHeight * 0.8, 520);
+      var left = Math.min(screenX + 12, window.innerWidth - panelWidth - 12);
+      var top = Math.min(screenY + 12, window.innerHeight - panelHeight - 12);
+      actionPanel.style.left = Math.max(12, left) + 'px';
+      actionPanel.style.top = Math.max(12, top) + 'px';
+
+      fetch("{{ url_for('admin_live_map_click_to_log') }}", {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ px: px, py: py }),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.ok) return;
+          actionClickX = data.x; actionClickY = data.y;
+          document.getElementById('action-panel-coords').textContent = 'X: ' + data.x + ' / Y: ' + data.y;
+        });
+    }
+
+    function closeActionPanel() {
+      actionPanel.style.display = 'none';
+    }
+
+    document.getElementById('action-panel-close').addEventListener('click', closeActionPanel);
+
+    document.getElementById('map-wrap').addEventListener('click', function(e) {
+      if (dragMoved) { dragMoved = false; return; }
+      var rect = document.getElementById('map-wrap').getBoundingClientRect();
+      var px = (e.clientX - rect.left) / zoom;
+      var py = (e.clientY - rect.top) / zoom;
+      openActionPanel(px, py, e.clientX, e.clientY);
+    });
+
+    document.addEventListener('click', function(e) {
+      if (actionPanel.style.display === 'none') return;
+      if (actionPanel.contains(e.target) || e.target.closest('#map-wrap')) return;
+      closeActionPanel();
+    });
+
+    function postAction(url, payload, pendingMessage) {
+      showActionResult(pendingMessage, 'pending');
+      return fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          showActionResult(data.message || data.error || (data.ok ? 'OK' : 'Fehler'), data.ok ? 'ok' : 'err');
+        })
+        .catch(function(err) {
+          showActionResult('Fehler: ' + err, 'err');
+        });
+    }
+
+    document.getElementById('action-teleport').addEventListener('click', function() {
+      if (actionClickX == null) { showActionResult('Koordinaten noch nicht bereit, kurz warten.', 'err'); return; }
+      postAction("{{ url_for('admin_live_map_teleport') }}",
+        { player: actionPlayerSelect.value, x: actionClickX, y: actionClickY },
+        'Teleportiere ' + actionPlayerSelect.value + ' …');
+    });
+
+    document.getElementById('action-give-item').addEventListener('click', function() {
+      postAction("{{ url_for('admin_live_map_give_item') }}", {
+        player: actionPlayerSelect.value,
+        type: document.getElementById('action-item-type').value,
+        item_id: document.getElementById('action-item-id').value,
+        amount: document.getElementById('action-item-amount').value,
+      }, 'Wird gesendet (dauert ~10s, kurzzeitige Admin-Rechte werden gesetzt) …');
+    });
+
+    document.getElementById('action-give-money').addEventListener('click', function() {
+      postAction("{{ url_for('admin_live_map_give_money_fame') }}", {
+        player: actionPlayerSelect.value,
+        money: document.getElementById('action-money').value,
+        fame: document.getElementById('action-fame').value,
+      }, 'Wird vergeben …');
+    });
+
+    document.getElementById('action-run-command').addEventListener('click', function() {
+      postAction("{{ url_for('admin_live_map_run_command') }}", {
+        player: actionPlayerSelect.value,
+        command: document.getElementById('action-command').value,
+      }, 'Befehl wird gesendet (dauert ~10s, kurzzeitige Admin-Rechte werden gesetzt) …');
+    });
+
+    document.getElementById('action-spawn-marker').addEventListener('click', function() {
+      if (actionClickX == null) { showActionResult('Koordinaten noch nicht bereit, kurz warten.', 'err'); return; }
+      var z = document.getElementById('action-marker-z').value;
+      if (z === '') { showActionResult('Bitte Z (Bodenhöhe) eintragen.', 'err'); return; }
+      postAction("{{ url_for('admin_live_map_spawn_drop_marker') }}",
+        { x: actionClickX, y: actionClickY, z: z },
+        'Kiste wird platziert …');
+    });
+
+    refreshPositions();
+    setInterval(refreshPositions, 8000);
+  </script>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

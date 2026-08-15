@@ -1,0 +1,110 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin-Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_players') }}">Spieler</a>
+      <a href="{{ url_for('admin_chat') }}">Chat</a>
+      <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>
+      <a href="{{ url_for('admin_activity_log') }}">Aktivitätsprotokoll</a>
+      <a href="{{ url_for('admin_live_map') }}">Live-Karte</a>
+      <a href="{{ url_for('admin_console') }}">Konsole</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('admin_daily') }}">Tagespaket</a>
+      <a href="{{ url_for('admin_redeem_codes') }}">Redeem-Codes</a>
+      <a href="{{ url_for('admin_dead_drops') }}">Briefkästen</a>
+      <a href="{{ url_for('admin_quests') }}">Quests</a>
+      <a href="{{ url_for('admin_world_events') }}">Weltereignisse</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:1100px;">
+    <h1 style="text-transform:uppercase;">📊 Dashboard</h1>
+
+    <div class="card">
+      <div class="card-title">● Vitals</div>
+      <div class="grid cols-4">
+        <div>
+          <div class="kv-row"><span class="k">Status</span>
+            <span class="v" style="color:var(--green);">{{ 'Online' if status and status.online else 'Unbekannt' }}</span></div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ status.fps if status else '–' }}</div>
+          <div class="stat-label">FPS</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ status.players if status else '–' }} / {{ status.max_players if status else '–' }}</div>
+          <div class="stat-label">Spieler</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">{{ status.uptime if status else '–' }}</div>
+          <div class="stat-label">Laufzeit</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px;">
+      <div class="card">
+        <div class="card-title">🔄 Nächster Neustart</div>
+        <div style="font-family:'Liberation Mono',monospace; font-size:24px; color:var(--green); font-weight:700;">
+          {{ next_restart.strftime('%H:%M') }} Uhr
+        </div>
+        <div style="color:var(--muted); font-size:13px; margin-top:4px;">{{ next_restart.strftime('%A, %d.%m.%Y') }}</div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌍 Weltzustand</div>
+        <div class="kv-row"><span class="k">Inselzeit</span><span class="v">{{ weather.island_time if weather else '–' }}</span></div>
+        <div class="kv-row"><span class="k">Luft / Wasser</span><span class="v">{{ (weather.air_temp ~ ' / ' ~ weather.water_temp ~ ' °C') if weather else '–' }}</span></div>
+      </div>
+    </div>
+
+    <div class="grid cols-4" style="margin-top:14px;">
+      <div class="card stat-box"><div class="stat-value">{{ total_players if total_players is not none else '–' }}</div><div class="stat-label">Spieler gesamt</div></div>
+      <div class="card stat-box"><div class="stat-value">{{ active_squads if active_squads is not none else '–' }}</div><div class="stat-label">Aktive Squads</div></div>
+      <div class="card stat-box"><div class="stat-value">{{ vehicle_count if vehicle_count is not none else '–' }}</div><div class="stat-label">Fahrzeuge</div></div>
+      <div class="card stat-box"><div class="stat-value">{{ base_count if base_count is not none else '–' }}</div><div class="stat-label">Basen</div></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <div class="card-title">🟢 Online-Spieler ({{ online_players|length }})</div>
+      {% if online_players %}
+      <div style="display:flex; flex-wrap:wrap; gap:8px;">
+        {% for name in online_players %}
+        <a href="{{ url_for('admin_players') }}?q={{ name }}" class="badge open" style="text-decoration:none;">{{ name }}</a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty">Gerade niemand online.</div>
+      {% endif %}
+    </div>
+
+    <div class="grid cols-4" style="margin-top:14px;">
+      <div class="card stat-box"><div class="stat-value">{{ linked_count }}</div><div class="stat-label">Verknüpfte Accounts</div></div>
+      <div class="card stat-box"><div class="stat-value">{{ total_coins }}</div><div class="stat-label">Coins im Umlauf</div></div>
+      <div class="card stat-box"><div class="stat-value">{{ shop_item_count }}</div><div class="stat-label">Shop-Artikel</div></div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <div class="card-title">🖥️ Admin-Konsole (Kurzform)</div>
+      <p style="color:var(--muted); font-size:13px;">Für die volle Ansicht mit Auswahl "Als wen ausführen" → <a href="{{ url_for('admin_console') }}">Konsole öffnen</a></p>
+    </div>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

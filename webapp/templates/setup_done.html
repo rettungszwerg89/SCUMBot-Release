@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Einrichtung gespeichert</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="container" style="max-width:560px; padding-top:100px; text-align:center;">
+    <h1>✅ Gespeichert!</h1>
+    <p style="color:var(--muted);">
+      Deine Einstellungen wurden in <code>secrets.ini</code> und <code>data/server_settings.json</code>
+      geschrieben. Damit sie wirksam werden, starte den Bot jetzt einmal neu:
+    </p>
+    <p><code>start_all.bat</code> (Doppelklick) bzw. <code>python bot.py</code> und <code>python webapp\app.py</code> neu starten.</p>
+    <p style="margin-top:24px;">
+      <a href="{{ url_for('setup') }}" class="cta">Zurück zur Einrichtung</a>
+      <a href="{{ url_for('home') }}" class="cta">Zur Startseite</a>
+    </p>
+  </div>
+</body>
+</html>

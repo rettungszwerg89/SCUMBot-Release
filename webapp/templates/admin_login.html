@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin-Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="container" style="max-width:380px; padding-top:100px;">
+    <h1 style="text-align:center; text-transform:uppercase;">🔒 Admin-Bereich</h1>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="POST" class="card">
+      <div class="form-group">
+        <label>Dein Name (für das Aktivitätsprotokoll)</label>
+        <input type="text" name="admin_name" placeholder="z.B. dein Ingame-Name" autofocus>
+      </div>
+      <div class="form-group">
+        <label>Passwort</label>
+        <input type="password" name="password">
+      </div>
+      <button type="submit" class="btn" style="width:100%;">Einloggen</button>
+    </form>
+  </div>
+</body>
+</html>

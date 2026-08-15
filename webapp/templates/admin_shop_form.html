@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ 'Artikel bearbeiten' if item else 'Neuer Artikel' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_shop') }}">Zurück zum Shop</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:520px;">
+    <h1 style="text-transform:uppercase;">{{ 'Artikel bearbeiten' if item else 'Neuer Artikel' }}</h1>
+    <form method="POST" class="card">
+      {% if not item %}
+      <div class="form-group">
+        <label>Schlüssel (eindeutig, keine Leerzeichen)</label>
+        <input type="text" name="key" required pattern="[a-z0-9_\-]+" placeholder="z.B. medkit">
+      </div>
+      {% endif %}
+      <div class="form-group">
+        <label>Name (Anzeige in Discord)</label>
+        <input type="text" name="name" required value="{{ item.name if item else '' }}">
+      </div>
+      <div class="form-group">
+        <label>Kategorie</label>
+        <select name="category">
+          {% for cat in categories %}
+          <option value="{{ cat }}" {{ 'selected' if item and item.category == cat else '' }}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Unterkategorie (optional, z.B. "Pistolen" innerhalb "Waffen")</label>
+        <input type="text" name="subcategory" list="subcategory-list" placeholder="leer lassen = keine Unterkategorie"
+               value="{{ item.subcategory if item and item.subcategory else '' }}">
+        <datalist id="subcategory-list">
+          {% for sub in subcategories %}
+          <option value="{{ sub }}">
+          {% endfor %}
+        </datalist>
+      </div>
+      <div class="form-group">
+        <label>Zubehör zu (optional, z.B. Magazin/Munition zu einer Waffe)</label>
+        <select name="parent_key">
+          <option value="">– eigenständiger Artikel –</option>
+          {% for p in possible_parents %}
+          <option value="{{ p.key }}" {{ 'selected' if item and item.parent_key == p.key else '' }}>{{ p.name }} ({{ p.category }})</option>
+          {% endfor %}
+        </select>
+        <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+          Wenn gesetzt, erscheint dieser Artikel im Discord-Shop nicht direkt in der Liste, sondern nur in der
+          Detailansicht des gewählten Artikels.
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Bild-Link (Link von extern, ODER unten hochladen/auswählen)</label>
+        <input type="url" id="image_url" name="image_url" placeholder="https://..." value="{{ item.image_url if item else '' }}">
+      </div>
+
+      <div class="form-group">
+        <label>Eigenes Bild hochladen</label>
+        <input type="file" id="image_file" accept=".png,.jpg,.jpeg,.webp,.gif">
+        <div id="upload-status" style="margin-top:6px; font-size:13px; color:var(--muted);"></div>
+      </div>
+
+      <div class="form-group">
+        <label>Oder aus bereits hochgeladenen Bildern wählen</label>
+        <div id="image-library" style="display:flex; flex-wrap:wrap; gap:8px; max-height:220px; overflow-y:auto; padding:8px; background:var(--panel2); border-radius:4px;">
+          <span style="color:var(--muted); font-size:13px;">Lade Bibliothek...</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Typ</label>
+        <select name="type" id="type-select" onchange="toggleAmount()">
+          <option value="item" {{ 'selected' if item and item.type == 'item' else '' }}>Item (#SpawnItem)</option>
+          <option value="vehicle" {{ 'selected' if item and item.type == 'vehicle' else '' }}>Fahrzeug (#SpawnVehicle)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>SCUM Item-ID (z.B. per #ListItems ermittelt)</label>
+        <input type="text" name="item_id" required value="{{ item.id if item else '' }}">
+      </div>
+      <div class="form-group" id="amount-group">
+        <label>Menge</label>
+        <input type="number" name="amount" min="1" value="{{ item.amount if item and item.amount else 1 }}">
+      </div>
+      <div class="form-group">
+        <label>Preis (Coins)</label>
+        <input type="number" name="price" min="0" required value="{{ item.price if item else '' }}">
+      </div>
+      <div class="form-group">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" name="shop_visible" {{ 'checked' if (item and item.shop_visible) or not item else '' }}>
+          Im Shop anzeigen (kaufbar)
+        </label>
+        <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+          Auch ohne Haken bleibt der Artikel im Katalog und kann weiterhin in Quests, Toten Briefkästen,
+          Tagespaket, Redeem-Codes und Weltereignissen ausgewählt werden.
+        </div>
+      </div>
+      <button type="submit" class="btn">Speichern</button>
+    </form>
+  </div>
+  <script>
+    function toggleAmount() {
+      var t = document.getElementById('type-select').value;
+      document.getElementById('amount-group').style.display = (t === 'vehicle') ? 'none' : 'block';
+    }
+    toggleAmount();
+
+    // Bild-Upload per AJAX
+    document.getElementById('image_file').addEventListener('change', function(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var status = document.getElementById('upload-status');
+      status.textContent = 'Lade hoch...';
+      var formData = new FormData();
+      formData.append('image_file', file);
+      fetch("{{ url_for('admin_shop_upload_image') }}", { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { status.textContent = 'Fehler: ' + data.error; return; }
+          document.getElementById('image_url').value = data.image_url;
+          status.textContent = '✅ Hochgeladen: ' + data.filename;
+          loadImageLibrary();
+        })
+        .catch(err => { status.textContent = 'Fehler: ' + err; });
+    });
+
+    // Bild-Bibliothek laden und anklickbar machen
+    function loadImageLibrary() {
+      fetch("{{ url_for('admin_shop_image_library') }}")
+        .then(r => r.json())
+        .then(data => {
+          var lib = document.getElementById('image-library');
+          if (!data.images.length) {
+            lib.innerHTML = '<span style="color:var(--muted); font-size:13px;">Noch keine Bilder hochgeladen.</span>';
+            return;
+          }
+          lib.innerHTML = '';
+          data.images.forEach(function(url) {
+            var img = document.createElement('img');
+            img.src = url;
+            img.style.cssText = 'width:70px;height:70px;object-fit:cover;border-radius:4px;cursor:pointer;border:2px solid transparent;';
+            img.title = 'Klicken zum Auswählen';
+            img.addEventListener('click', function() {
+              document.getElementById('image_url').value = url;
+            });
+            lib.appendChild(img);
+          });
+        });
+    }
+    loadImageLibrary();
+  </script>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

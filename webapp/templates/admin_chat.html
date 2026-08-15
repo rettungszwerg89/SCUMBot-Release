@@ -1,0 +1,70 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin-Chat</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_players') }}">Spieler</a>
+      <a href="{{ url_for('admin_chat') }}">Chat</a>
+      <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>
+      <a href="{{ url_for('admin_activity_log') }}">Aktivitätsprotokoll</a>
+      <a href="{{ url_for('admin_live_map') }}">Live-Karte</a>
+      <a href="{{ url_for('admin_console') }}">Konsole</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:800px;">
+    <h1 style="text-transform:uppercase;">💬 Chat</h1>
+
+    {% if result %}<div class="card" style="border-color:var(--green); margin-bottom:16px;">{{ result }}</div>{% endif %}
+
+    <form method="POST" class="card" style="margin-bottom:20px;">
+      <div class="form-group">
+        <label>Absendername (im Spiel sichtbar)</label>
+        <input type="text" name="sender" value="Admin">
+      </div>
+      <div class="form-group">
+        <label>Nachricht</label>
+        <input type="text" name="message" placeholder="Nachricht an alle Spieler..." autofocus>
+      </div>
+      <button type="submit" class="btn">Senden</button>
+    </form>
+
+    <div class="card">
+      <div class="card-title">Verlauf</div>
+      {% if entries %}
+      <table>
+        <tr><th>Zeit</th><th>Spieler</th><th>Nachricht</th></tr>
+        {% for e in entries %}
+        <tr>
+          <td style="color:var(--muted); white-space:nowrap;">{{ e.timestamp[:19].replace('T', ' ') }}</td>
+          <td style="font-weight:700;">{{ e.player }}</td>
+          <td>{{ e.message }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">Noch keine Nachrichten.</div>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

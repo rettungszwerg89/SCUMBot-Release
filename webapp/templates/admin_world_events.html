@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Weltereignisse verwalten</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('admin_dead_drops') }}">Briefkästen</a>
+      <a href="{{ url_for('admin_quests') }}">Quests</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container">
+    <h1 style="text-transform:uppercase;">🌍 Weltereignisse verwalten</h1>
+
+    <div class="card">
+      <div class="card-title">● Aktueller Status</div>
+      {% if current_location %}
+      <div class="kv-row"><span class="k">Ort</span><span class="v">{{ current_location.name }}</span></div>
+      <div class="kv-row"><span class="k">Nächster Wechsel</span><span class="v">{{ state.next_change_at[:16].replace('T', ' ') }}</span></div>
+      {% else %}
+      <div class="empty">Noch kein Ereignis aktiv (startet automatisch, sobald mindestens ein Ort konfiguriert ist).</div>
+      {% endif %}
+    </div>
+
+    <h3 style="margin-top:26px;">Orte</h3>
+    <a href="{{ url_for('admin_world_events_new') }}" class="btn">+ Neuer Ort</a>
+    <table style="margin-top:12px;">
+      <tr><th>Name</th><th>Koordinate</th><th>Radius</th><th></th></tr>
+      {% for loc in locations %}
+      <tr>
+        <td>{{ loc.name }}</td>
+        <td style="font-family:'Liberation Mono',monospace; font-size:12px;">{{ loc.x }}, {{ loc.y }}</td>
+        <td>{{ loc.radius }}m</td>
+        <td>
+          <a href="{{ url_for('admin_world_events_edit', key=loc.key) }}" class="btn secondary">Bearbeiten</a>
+          <form method="POST" action="{{ url_for('admin_world_events_delete', key=loc.key) }}" class="inline"
+                onsubmit="return confirm('Ort \'{{ loc.name }}\' wirklich löschen?');">
+            <button type="submit" class="btn danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" class="empty">Noch keine Orte angelegt.</td></tr>
+      {% endfor %}
+    </table>
+
+    <h3 style="margin-top:30px;">Loot-Pool</h3>
+    <p style="color:var(--muted);">Bei jedem Loot-Abwurf werden zufällig 1-3 dieser Artikel (in der jeweils eingestellten Menge, unabhängig vom Shop-Standardwert) an anwesende Spieler verteilt (mehr bei hoher Spielerzahl im Gebiet).</p>
+    <form method="POST" class="card" style="max-width:600px;">
+      <div id="loot-entries-list"></div>
+      <button type="button" class="btn secondary" onclick="addLootRow()" style="margin-top:6px;">+ Artikel hinzufügen</button>
+      <button type="submit" class="btn" style="margin-top:16px; display:block;">Speichern</button>
+    </form>
+  </div>
+  <script>
+    var LOOT_ITEMS = [
+      {% for item in items %}
+      { key: {{ item.key|tojson }}, label: {{ (item.name ~ ' (' ~ item.category ~ ')')|tojson }} }{{ ',' if not loop.last else '' }}
+      {% endfor %}
+    ];
+    var EXISTING_LOOT_ENTRIES = {{ loot_entries|tojson }};
+
+    function addLootRow(itemKey, amount) {
+      var container = document.getElementById('loot-entries-list');
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex; gap:8px; margin-bottom:6px; align-items:center;';
+
+      var select = document.createElement('select');
+      select.name = 'loot_item_key';
+      select.style.flex = '1';
+      LOOT_ITEMS.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = item.label;
+        if (item.key === itemKey) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      var amountInput = document.createElement('input');
+      amountInput.type = 'number';
+      amountInput.name = 'loot_item_amount';
+      amountInput.min = '1';
+      amountInput.value = amount || 1;
+      amountInput.style.width = '90px';
+
+      var removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'btn danger';
+      removeBtn.textContent = 'X';
+      removeBtn.addEventListener('click', function() { row.remove(); });
+
+      row.appendChild(select);
+      row.appendChild(amountInput);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    }
+
+    if (EXISTING_LOOT_ENTRIES.length) {
+      EXISTING_LOOT_ENTRIES.forEach(function(e) { addLootRow(e.item_key, e.amount); });
+    } else {
+      addLootRow();
+    }
+
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

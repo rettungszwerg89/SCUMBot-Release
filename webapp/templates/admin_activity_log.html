@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aktivitätsprotokoll</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_players') }}">Spieler</a>
+      <a href="{{ url_for('admin_chat') }}">Chat</a>
+      <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>
+      <a href="{{ url_for('admin_activity_log') }}">Aktivitätsprotokoll</a>
+      <a href="{{ url_for('admin_live_map') }}">Live-Karte</a>
+      <a href="{{ url_for('admin_console') }}">Konsole</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container" style="max-width:1100px;">
+    <h1 style="text-transform:uppercase;">📋 Aktivitätsprotokoll</h1>
+    <p style="color:var(--muted);">
+      Wer hat wann was über Discord oder das Admin-Webinterface ausgelöst — Käufe, Redeem-Codes,
+      Briefkasten-/Quest-Abgaben, Live-Karten-Admin-Aktionen. Rohe SCUM-Server-Logs (Chat/Kills/Logins)
+      stehen separat im <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>.
+    </p>
+
+    <div class="toggle-group" style="margin-bottom:16px;">
+      <a href="{{ url_for('admin_activity_log') }}" class="toggle-btn {{ 'active' if source == 'all' else '' }}">Alle</a>
+      <a href="{{ url_for('admin_activity_log', source='discord') }}" class="toggle-btn {{ 'active' if source == 'discord' else '' }}">Discord</a>
+      <a href="{{ url_for('admin_activity_log', source='web') }}" class="toggle-btn {{ 'active' if source == 'web' else '' }}">Webinterface</a>
+    </div>
+
+    <div class="card">
+      {% if entries %}
+      <table>
+        <tr><th>Zeit</th><th></th><th>Wer</th><th>Aktion</th><th>Details</th></tr>
+        {% for e in entries %}
+        <tr>
+          <td style="color:var(--muted); white-space:nowrap; font-size:12px;">{{ e.timestamp[:16].replace('T', ' ') }}</td>
+          <td>{{ '💬' if e.source == 'discord' else '🖥️' }}</td>
+          <td>{{ e.actor }}</td>
+          <td>{{ e.action }}</td>
+          <td style="color:var(--muted); font-size:13px;">{{ e.details }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <div class="empty">Noch keine Einträge.</div>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Einrichtung</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="container" style="max-width:720px; padding-top:60px; padding-bottom:80px;">
+    <h1 style="text-transform:uppercase;">⚙️ Einrichtung</h1>
+    <p style="color:var(--muted);">
+      Trag hier die Zugangsdaten und Einstellungen für deine eigene SCUM-Server-Installation ein.
+      Felder mit <strong>*</strong> sind Pflicht. Nach dem Speichern musst du den Bot
+      (<code>start_all.bat</code>) einmal neu starten, damit die Werte übernommen werden.
+    </p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+    <form method="POST" class="card">
+      <h2>Discord</h2>
+      {% for key, label, required in secret_fields %}
+        {% if key in ("DISCORD_BOT_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_CLIENT_SECRET", "ADMIN_PASSWORD") %}
+        <div class="form-group">
+          <label>{{ label }}{% if required %} *{% endif %}</label>
+          <input type="{{ 'password' if 'PASSWORD' in key or 'SECRET' in key or 'TOKEN' in key else 'text' }}"
+                 name="{{ key }}"
+                 placeholder="{{ 'bereits gesetzt - leer lassen zum Beibehalten' if secrets_present[key] else '' }}">
+        </div>
+        {% endif %}
+      {% endfor %}
+
+      <h2>Discord-Channel-IDs</h2>
+      <p style="color:var(--muted); font-size:13px;">Rechtsklick auf einen Channel in Discord (Entwicklermodus aktiviert) → ID kopieren. 0 = Funktion deaktiviert.</p>
+      <div class="grid cols-2">
+        {% for key, label in channel_fields %}
+        <div class="form-group">
+          <label>{{ label }}</label>
+          <input type="text" name="{{ key }}" value="{{ current.get(key, 0) }}">
+        </div>
+        {% endfor %}
+      </div>
+
+      <h2>SCUM-Server</h2>
+      {% for key, label in path_fields %}
+      <div class="form-group">
+        <label>{{ label }}</label>
+        <input type="text" name="{{ key }}" value="{{ current.get(key, '') }}">
+      </div>
+      {% endfor %}
+      <div class="form-group">
+        <label>Admin-Ingame-Name (für die Admin-Konsole)</label>
+        <input type="text" name="ADMIN_PLAYER_NAME" value="{{ current.get('ADMIN_PLAYER_NAME', '') }}">
+      </div>
+
+      <h2>AMP (optional)</h2>
+      <p style="color:var(--muted); font-size:13px;">
+        Ohne AMP funktionieren alle Spielaktionen trotzdem (Shop, Taxi, Admin-Konsole usw. laufen über den
+        mitgelieferten Lua-Mod). Nur mit AMP nutzt die Serverstatus-Anzeige AMP statt der Steam-Abfrage unten.
+      </p>
+      <div class="form-group">
+        <label><input type="checkbox" name="AMP_ENABLED" {% if current.get('AMP_ENABLED') %}checked{% endif %}> AMP nutzen</label>
+      </div>
+      <div class="form-group">
+        <label>AMP-URL</label>
+        <input type="text" name="AMP_URL" value="{{ current.get('AMP_URL', 'http://localhost:8081') }}">
+      </div>
+      <div class="form-group">
+        <label>AMP-Benutzername</label>
+        <input type="text" name="AMP_USER" placeholder="{{ 'bereits gesetzt - leer lassen zum Beibehalten' if secrets_present['AMP_USER'] else '' }}">
+      </div>
+      <div class="form-group">
+        <label>AMP-Passwort</label>
+        <input type="password" name="AMP_PASSWORD" placeholder="{{ 'bereits gesetzt - leer lassen zum Beibehalten' if secrets_present['AMP_PASSWORD'] else '' }}">
+      </div>
+
+      <h2>Server-Status ohne AMP (Steam-Query)</h2>
+      <div class="form-group">
+        <label>Server-Adresse/IP</label>
+        <input type="text" name="STEAM_QUERY_HOST" value="{{ current.get('STEAM_QUERY_HOST', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Steam-Query-Port</label>
+        <input type="text" name="STEAM_QUERY_PORT" value="{{ current.get('STEAM_QUERY_PORT', '') }}">
+      </div>
+
+      <h2>Webseite</h2>
+      <div class="form-group">
+        <label>Servername (Anzeige auf der Webseite)</label>
+        <input type="text" name="SERVER_NAME" value="{{ current.get('SERVER_NAME', 'Mein SCUM-Server') }}">
+      </div>
+      <div class="form-group">
+        <label>Öffentliche URL (leer lassen für http://localhost:5000)</label>
+        <input type="text" name="WEBAPP_PUBLIC_URL" value="{{ current.get('WEBAPP_PUBLIC_URL', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Spenden-Link (optional, z.B. Buy Me a Coffee/PayPal.me) - erscheint als kleiner Link auf der Webseite</label>
+        <input type="text" name="SUPPORT_URL" value="{{ current.get('SUPPORT_URL', '') }}" placeholder="https://buymeacoffee.com/deinname">
+      </div>
+      <div class="form-group">
+        <label>top-games.net Token (optional, Voting-Belohnung)</label>
+        <input type="text" name="TOPGAMES_TOKEN" placeholder="{{ 'bereits gesetzt - leer lassen zum Beibehalten' if secrets_present['TOPGAMES_TOKEN'] else '' }}">
+      </div>
+
+      <button type="submit" class="btn" style="width:100%; margin-top:16px;">Speichern</button>
+    </form>
+  </div>
+</body>
+</html>

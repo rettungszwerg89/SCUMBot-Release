@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shop verwalten</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_players') }}">Spieler</a>
+      <a href="{{ url_for('admin_chat') }}">Chat</a>
+      <a href="{{ url_for('admin_log_viewer') }}">Log Viewer</a>
+      <a href="{{ url_for('admin_activity_log') }}">Aktivitätsprotokoll</a>
+      <a href="{{ url_for('admin_console') }}">Konsole</a>
+      <a href="{{ url_for('admin_daily') }}">Tagespaket</a>
+      <a href="{{ url_for('admin_redeem_codes') }}">Redeem-Codes</a>
+      <a href="{{ url_for('admin_dead_drops') }}">Briefkästen</a>
+      <a href="{{ url_for('admin_quests') }}">Quests</a>
+      <a href="{{ url_for('admin_world_events') }}">Weltereignisse</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container">
+    <h1 style="text-transform:uppercase;">🛒 Shop verwalten</h1>
+    <a href="{{ url_for('admin_shop_new') }}" class="btn">+ Neuer Artikel</a>
+
+    {% for category, items in groups %}
+    <h3 style="margin-top:30px;">{{ category }}</h3>
+    <table>
+      <tr><th></th><th>Name</th><th>Unterkategorie / Zubehör zu</th><th>Typ</th><th>Item-ID</th><th>Menge</th><th>Preis</th><th>Shop</th><th></th></tr>
+      {% for item in items %}
+      <tr>
+        <td>
+          {% if item.image_url %}
+            <img src="{{ item.image_url }}" style="width:44px;height:44px;object-fit:cover;border-radius:4px;">
+          {% else %}
+            <div style="width:44px;height:44px;background:var(--panel2);border-radius:4px;"></div>
+          {% endif %}
+        </td>
+        <td>{{ item.name }}</td>
+        <td style="color:var(--muted); font-size:13px;">
+          {% if item.parent_key %}
+            ↳ Zubehör zu {{ items_by_key[item.parent_key].name if item.parent_key in items_by_key else '⚠️ ' ~ item.parent_key }}
+          {% elif item.subcategory %}
+            {{ item.subcategory }}
+          {% else %}
+            –
+          {% endif %}
+        </td>
+        <td>{{ item.type }}</td>
+        <td style="color:var(--muted);">{{ item.id }}</td>
+        <td>{{ item.amount or '–' }}</td>
+        <td style="color:var(--toxic);font-weight:700;">{{ item.price }}</td>
+        <td>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" class="visible-toggle" data-key="{{ item.key }}" {{ 'checked' if item.shop_visible else '' }}>
+            <span class="visible-label" style="color:{{ 'var(--toxic)' if item.shop_visible else 'var(--muted)' }};">
+              {{ 'sichtbar' if item.shop_visible else 'versteckt' }}
+            </span>
+          </label>
+        </td>
+        <td>
+          <a href="{{ url_for('admin_shop_edit', key=item.key) }}" class="btn secondary">Bearbeiten</a>
+          <form method="POST" action="{{ url_for('admin_shop_delete', key=item.key) }}" class="inline"
+                onsubmit="return confirm('Artikel \'{{ item.name }}\' wirklich löschen?');">
+            <button type="submit" class="btn danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endfor %}
+    <p style="color:var(--muted); margin-top:20px;">Änderungen erscheinen im Discord-Shop innerhalb von 5 Minuten automatisch.</p>
+  </div>
+  <script>
+    document.querySelectorAll('.visible-toggle').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var key = cb.dataset.key;
+        var label = cb.parentElement.querySelector('.visible-label');
+        cb.disabled = true;
+        fetch('/admin/shop/' + encodeURIComponent(key) + '/toggle-visible', { method: 'POST' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (!data.ok) { alert('Fehler: ' + (data.error || 'unbekannt')); cb.checked = !cb.checked; return; }
+            cb.checked = data.shop_visible;
+            label.textContent = data.shop_visible ? 'sichtbar' : 'versteckt';
+            label.style.color = data.shop_visible ? 'var(--toxic)' : 'var(--muted)';
+          })
+          .catch(function(err) { alert('Fehler: ' + err); cb.checked = !cb.checked; })
+          .finally(function() { cb.disabled = false; });
+      });
+    });
+
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

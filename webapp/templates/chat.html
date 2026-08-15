@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero"><h1>Chat-Verlauf</h1>
+<p style="color:var(--muted);">Global-Chat, letzte {{ entries|length }} Nachrichten.</p>
+</div>
+<div class="card">
+{% if entries %}
+<table>
+  <tr><th>Zeit</th><th>Spieler</th><th>Nachricht</th></tr>
+  {% for e in entries %}
+  <tr>
+    <td style="color:var(--muted); white-space:nowrap;">{{ e.timestamp[:19].replace('T', ' ') }}</td>
+    <td style="font-weight:700;">{{ e.player }}</td>
+    <td>{{ e.message }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">Noch keine Chat-Nachrichten aufgezeichnet.</div>
+{% endif %}
+</div>
+{% endblock %}

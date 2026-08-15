@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="hero"><h1>Kill-Feed</h1>
+<p style="color:var(--muted);">Die letzten {{ entries|length }} Kills.</p>
+</div>
+{% if has_heatmap %}
+<div class="card">
+  <div class="card-title">🗺️ Kill-Heatmap</div>
+  <img src="{{ url_for('killfeed_heatmap_image') }}" style="max-width:100%; border-radius:4px;" alt="Kill-Heatmap">
+</div>
+{% endif %}
+<div class="card">
+{% if entries %}
+<table>
+  <tr><th>Zeit</th><th>Typ</th><th>Opfer</th><th>Killer</th><th>Waffe</th></tr>
+  {% for e in entries %}
+  <tr>
+    <td style="color:var(--muted);">{{ e.timestamp[:19].replace('T', ' ') }}</td>
+    <td><span class="badge {{ e.kill_type }}">{{ e.kill_type }}</span></td>
+    <td>{{ e.victim_name or '?' }}</td>
+    <td>{{ e.killer_name or '–' }}</td>
+    <td style="color:var(--muted);">{{ e.weapon or '–' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="empty">Noch keine Kills aufgezeichnet.</div>
+{% endif %}
+</div>
+{% endblock %}

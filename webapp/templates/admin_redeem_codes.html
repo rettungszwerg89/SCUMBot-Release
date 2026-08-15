@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redeem-Codes verwalten</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('admin_daily') }}">Tagespaket</a>
+      <a href="{{ url_for('admin_dead_drops') }}">Briefkästen</a>
+      <a href="{{ url_for('admin_quests') }}">Quests</a>
+      <a href="{{ url_for('admin_world_events') }}">Weltereignisse</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container">
+    <h1 style="text-transform:uppercase;">🎫 Redeem-Codes verwalten</h1>
+
+    {% if created %}
+    <div class="card" style="border-color:var(--green);">
+      <div class="card-title">✅ Neuer Code erstellt</div>
+      <div style="font-family:'Liberation Mono',monospace; font-size:22px; color:var(--green); font-weight:700;">{{ created }}</div>
+      <div style="color:var(--muted); font-size:13px; margin-top:4px;">Diesen Code an den Spieler weitergeben (z.B. per DM). Einlösen im Account-Panel unter "Code einlösen".</div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-title">+ Neuen Code erstellen</div>
+      <form method="POST">
+        <div class="form-group">
+          <label>Artikel</label>
+          <select name="item_key" required>
+            {% for item in items %}
+            <option value="{{ item.key }}">{{ item.name }} ({{ item.category }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Menge (unabhängig vom Shop-Standardwert)</label>
+          <input type="number" name="amount" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Maximale Einlösungen</label>
+          <input type="number" name="max_uses" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Ablaufdatum (optional)</label>
+          <input type="date" name="expires_at">
+        </div>
+        <div class="form-group">
+          <label>Notiz (optional, nur intern)</label>
+          <input type="text" name="note" placeholder="z.B. 'Gewinner Event XY'">
+        </div>
+        <button type="submit" class="btn">Code erstellen</button>
+      </form>
+    </div>
+
+    <h3 style="margin-top:30px;">Bestehende Codes</h3>
+    <table>
+      <tr><th>Code</th><th>Artikel</th><th>Menge</th><th>Nutzungen</th><th>Läuft ab</th><th>Notiz</th><th></th></tr>
+      {% for c in codes %}
+      <tr>
+        <td style="font-family:'Liberation Mono',monospace;">{{ c.code }}</td>
+        <td>{{ items_by_key[c.item_key].name if c.item_key in items_by_key else '⚠️ gelöschter Artikel (' ~ c.item_key ~ ')' }}</td>
+        <td>{{ c.amount or 1 }}</td>
+        <td>{{ c.uses }} / {{ c.max_uses }}</td>
+        <td style="color:var(--muted);">{{ c.expires_at[:10] if c.expires_at else '–' }}</td>
+        <td style="color:var(--muted);">{{ c.note or '–' }}</td>
+        <td>
+          <form method="POST" action="{{ url_for('admin_redeem_codes_delete', code=c.code) }}" class="inline"
+                onsubmit="return confirm('Code {{ c.code }} wirklich löschen?');">
+            <button type="submit" class="btn danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty">Noch keine Codes erstellt.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>

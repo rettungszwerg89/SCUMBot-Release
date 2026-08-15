@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tote Briefkästen verwalten</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ asset_version('style.css') }}">
+</head>
+<body>
+  <div class="nav">
+    <div class="brand">{{ server_name }} · ADMIN</div>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menü öffnen">☰</button>
+    <div class="links" id="nav-links">
+      <a href="{{ url_for('admin_dashboard') }}">Übersicht</a>
+      <a href="{{ url_for('admin_shop') }}">Shop</a>
+      <a href="{{ url_for('admin_daily') }}">Tagespaket</a>
+      <a href="{{ url_for('admin_redeem_codes') }}">Redeem-Codes</a>
+      <a href="{{ url_for('admin_quests') }}">Quests</a>
+      <a href="{{ url_for('admin_world_events') }}">Weltereignisse</a>
+      <a href="{{ url_for('home') }}">Zur Webseite</a>
+      <a href="{{ url_for('admin_logout') }}">Logout</a>
+    </div>
+  </div>
+  <div class="container">
+    <h1 style="text-transform:uppercase;">📦 Tote Briefkästen verwalten</h1>
+    <a href="{{ url_for('admin_dead_drops_new') }}" class="btn">+ Neuer Briefkasten</a>
+
+    <table style="margin-top:20px;">
+      <tr><th>Name</th><th>Benötigt</th><th>Koordinate</th><th>Radius</th><th>Belohnung</th><th></th></tr>
+      {% for d in drops %}
+      <tr>
+        <td>{{ d.name }}</td>
+        <td style="color:var(--muted); font-size:13px;">
+          {% for r in d.requirements %}
+            {{ r.amount }}x {{ items_by_key[r.item_key].name if r.item_key in items_by_key else '⚠️ ' ~ r.item_key }}{{ ', ' if not loop.last else '' }}
+          {% endfor %}
+        </td>
+        <td style="font-family:'Liberation Mono',monospace; font-size:12px;">{{ d.x }}, {{ d.y }}</td>
+        <td>{{ d.radius }}m</td>
+        <td>
+          {% if d.payout_type == 'package' %}
+            📦 {{ items_by_key[d.payout_package_key].name if d.payout_package_key in items_by_key else '⚠️ ' ~ d.payout_package_key }}
+          {% elif d.payout_type == 'cash' %}
+            💵 {{ d.payout_amount }} Ingame-Geld
+          {% else %}
+            💰 {{ d.payout_amount }} Coins
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('admin_dead_drops_edit', key=d.key) }}" class="btn secondary">Bearbeiten</a>
+          <form method="POST" action="{{ url_for('admin_dead_drops_delete', key=d.key) }}" class="inline"
+                onsubmit="return confirm('Briefkasten \'{{ d.name }}\' wirklich löschen?');">
+            <button type="submit" class="btn danger">Löschen</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="empty">Noch keine Toten Briefkästen angelegt.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  <script>
+    var navToggle = document.getElementById('nav-toggle');
+    if (navToggle) {
+      navToggle.addEventListener('click', function() {
+        document.getElementById('nav-links').classList.toggle('open');
+      });
+    }
+  </script>
+</body>
+</html>
